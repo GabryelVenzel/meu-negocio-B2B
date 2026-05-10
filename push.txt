@@ -1,0 +1,19 @@
+
+
+# 1. Adiciona as mudanças
+
+
+git add .
+
+
+# 2. Registra o commit
+
+git commit -m "deploy: Teste final cliente"
+
+
+
+# 3. Envia para o GitHub (e dispara o Vercel)
+
+git push origin main
+
+
