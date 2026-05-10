@@ -36,24 +36,23 @@ export default function Home() {
             type="text" 
             value={termoBusca}
             onChange={(e) => setTermoBusca(e.target.value)}
-            placeholder="O que sua obra precisa hoje?"
-            // CORREÇÃO AQUI: bg-white agora está dentro da className
-            className="flex-1 px-6 py-4 text-lg rounded-xl outline-none bg-white text-slate-900 shadow-2xl focus:ring-4 focus:ring-orange-500/40 transition-all placeholder:text-gray-400"
+            placeholder="Ex: Cortina de luz, Andaime NR18, Capacete..."
+            className="flex-1 px-6 py-4 text-lg rounded-lg bg-white outline-none focus:ring-4 focus:ring-orange-500/50 text-slate-900 shadow-xl"
           />
           <button 
             type="submit"
-            className="px-12 py-4 bg-orange-600 text-white text-lg font-black rounded-xl hover:bg-orange-500 transition shadow-xl active:scale-95"
+            className="px-10 py-4 bg-orange-600 text-white text-lg font-bold rounded-lg hover:bg-orange-500 transition shadow-xl"
           >
-            Buscar Agora
+            Buscar
           </button>
         </form>
 
         {/* Sugestões Rápidas */}
-        <div className="mt-12 flex flex-wrap justify-center gap-3 items-center">
-          <span className="text-gray-500 text-sm font-bold uppercase tracking-widest">Populares:</span>
-          <Link href="/busca?categoria=EPI" className="px-5 py-2 rounded-full border border-slate-700 text-gray-300 hover:bg-slate-800 hover:border-orange-500 transition text-sm font-medium">EPIs</Link>
-          <Link href="/busca?categoria=Maquinario" className="px-5 py-2 rounded-full border border-slate-700 text-gray-300 hover:bg-slate-800 hover:border-orange-500 transition text-sm font-medium">Maquinário</Link>
-          <Link href="/busca?categoria=Servicos" className="px-5 py-2 rounded-full border border-slate-700 text-gray-300 hover:bg-slate-800 hover:border-orange-500 transition text-sm font-medium">Engenharia</Link>
+        <div className="mt-10 flex flex-wrap justify-center gap-3">
+          <span className="text-gray-400 text-sm mt-1">Buscas populares:</span>
+          <Link href="/busca?categoria=EPI" className="px-4 py-1 rounded-full border border-gray-600 text-gray-300 hover:bg-gray-800 transition text-sm">EPIs</Link>
+          <Link href="/busca?categoria=Maquinario" className="px-4 py-1 rounded-full border border-gray-600 text-gray-300 hover:bg-gray-800 transition text-sm">Maquinário</Link>
+          <Link href="/busca?categoria=Servicos" className="px-4 py-1 rounded-full border border-gray-600 text-gray-300 hover:bg-gray-800 transition text-sm">Serviços</Link>
         </div>
       </div>
     </main>
