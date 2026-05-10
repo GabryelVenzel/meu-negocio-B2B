@@ -3,40 +3,35 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "@/firebase/config";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { collection, query, where, getDocs, orderBy, onSnapshot } from "firebase/firestore";
+import { collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [carregando, setCarregando] = useState(true);
-  const [conversas, setConversas] = useState<any[]>([]);
-  const [meusProdutos, setMeusProdutos] = useState<any[]>([]);
+  
+  const [totalProdutos, setTotalProdutos] = useState(0);
+  const [totalNegociacoes, setTotalNegociacoes] = useState(0);
+  
   const router = useRouter();
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (usuarioLogado) => {
       if (usuarioLogado) {
         setUser(usuarioLogado);
-        carregarProdutos(usuarioLogado.uid);
         
-        // Pede apenas os chats (sem o orderBy do Firebase)
+        const qProdutos = query(collection(db, "produtos"), where("vendedor_id", "==", usuarioLogado.uid));
+        const snapProdutos = await getDocs(qProdutos);
+        setTotalProdutos(snapProdutos.docs.length);
+        
         const qChats = query(
           collection(db, "chats"),
           where("participantes", "array-contains", usuarioLogado.uid)
         );
 
         const unsubscribeChats = onSnapshot(qChats, (snap) => {
-          const lista = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          
-          // O TRUQUE: Ordena os dados usando o JavaScript (do mais recente para o mais antigo)
-          lista.sort((a, b) => {
-            const dataA = a.ultima_mensagem_data?.toMillis() || 0;
-            const dataB = b.ultima_mensagem_data?.toMillis() || 0;
-            return dataB - dataA;
-          });
-
-          setConversas(lista);
+          setTotalNegociacoes(snap.docs.length);
           setCarregando(false);
         });
 
@@ -49,88 +44,104 @@ export default function Dashboard() {
     return () => unsubscribeAuth();
   }, [router]);
 
-  const carregarProdutos = async (uid: string) => {
-    const q = query(collection(db, "produtos"), where("vendedor_id", "==", uid));
-    const snap = await getDocs(q);
-    setMeusProdutos(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-  };
+  if (carregando) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Carregando painel Nexus...</div>;
 
-  if (carregando) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">A carregar Nexus Dash...</div>;
+  // A LÓGICA MÁGICA: Se tem produtos, é Vendedor. Se não, é Comprador.
+  const isVendedor = totalProdutos > 0;
 
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
       {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-slate-900 text-white flex flex-col p-6">
-        <h2 className="text-xl font-bold mb-10 text-orange-500">NEXUS B2B</h2>
-        <nav className="flex-1 space-y-2">
-          <Link href="/dashboard" className="block px-4 py-2 bg-slate-800 rounded-md text-orange-400 font-bold">Início</Link>
-          <Link href="/dashboard/mensagens" className="block px-4 py-2 hover:bg-slate-800 rounded-md transition text-gray-300">Mensagens</Link>
-          <Link href="/dashboard/perfil" className="block px-4 py-2 hover:bg-slate-800 rounded-md transition text-gray-300">Perfil</Link>
+      <aside className="w-full md:w-64 bg-slate-900 text-white flex flex-col p-6 shadow-xl">
+        <h2 className="text-xl font-bold mb-10 text-orange-500 tracking-tighter">NEXUS DASH</h2>
+        <nav className="flex-1 space-y-3">
+          <Link href="/dashboard" className="block px-4 py-3 bg-slate-800 rounded-md text-orange-400 font-bold border-l-4 border-orange-500">Visão Geral</Link>
+          
+          {/* Menu de Catálogo SÓ aparece para Vendedores */}
+          {isVendedor && (
+            <Link href="/dashboard/meu-catalogo" className="block px-4 py-3 hover:bg-slate-800 rounded-md transition text-gray-300">Meu Catálogo</Link>
+          )}
+          
+          <Link href="/dashboard/mensagens" className="block px-4 py-3 hover:bg-slate-800 rounded-md transition text-gray-300">
+            {isVendedor ? "Caixa de Entrada" : "Minhas Cotações"}
+          </Link>
+          <Link href="/dashboard/perfil" className="block px-4 py-3 hover:bg-slate-800 rounded-md transition text-gray-300">Perfil Empresa</Link>
         </nav>
-        <button onClick={() => signOut(auth)} className="mt-10 text-red-400 text-sm hover:underline">Sair do sistema</button>
+        <button onClick={() => signOut(auth)} className="mt-10 px-4 py-2 bg-red-900/30 text-red-300 rounded hover:bg-red-900/50 transition text-sm">Encerrar Sessão</button>
       </aside>
 
-      {/* Conteúdo */}
-      <section className="flex-1 p-8 overflow-y-auto">
-        <div className="flex justify-between items-center mb-10">
-          <h1 className="text-3xl font-bold text-slate-900">Resumo do Negócio</h1>
-          <Link href="/dashboard/novo-produto" className="bg-orange-600 text-white px-6 py-2 rounded-lg font-bold shadow-lg hover:bg-orange-500 transition">
-            + Novo Produto
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <section className="flex-1 p-8 lg:p-12 overflow-y-auto">
+        
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Painel de Controle</h1>
+            <p className="text-gray-500 mt-1">
+              Bem-vindo(a) ao seu centro de operações. Você está no perfil de <strong className="text-slate-800">{isVendedor ? "Fornecedor" : "Comprador"}</strong>.
+            </p>
+          </div>
           
-          {/* Coluna de Mensagens/Negociações */}
-          <div className="lg:col-span-2 space-y-6">
-            <h3 className="text-lg font-bold text-slate-800 flex items-center">
-              <span className="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
-              Negociações Ativas
-            </h3>
-            
-            {conversas.length === 0 ? (
-              <div className="bg-white p-10 rounded-xl border border-dashed border-gray-300 text-center text-gray-400">
-                Nenhuma conversa iniciada ainda.
+          {/* O botão fica diferente dependendo do papel do utilizador */}
+          <Link href="/dashboard/novo-produto" className={`px-8 py-3 rounded-lg font-bold shadow-lg transition-all ${isVendedor ? 'bg-orange-600 text-white hover:bg-orange-700 shadow-orange-600/20' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>
+            {isVendedor ? "+ Publicar Novo Item" : "Começar a Vender B2B"}
+          </Link>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          
+          {/* KPI de Inventário - Só aparece se for Vendedor */}
+          {isVendedor && (
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest">Catálogo Ativo</h3>
+                <div className="h-10 w-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-xl">📦</div>
               </div>
-            ) : (
-              <div className="grid gap-4">
-                {conversas.map((chat) => (
-                  <Link href={`/dashboard/mensagens/${chat.id}`} key={chat.id} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition flex items-center group">
-                    <div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold group-hover:bg-orange-100 group-hover:text-orange-600 transition">
-                      {chat.produto_nome?.charAt(0)}
-                    </div>
-                    <div className="ml-4 flex-1">
-                      <h4 className="font-bold text-slate-900">{chat.produto_nome}</h4>
-                      <p className="text-sm text-gray-500 truncate max-w-xs">{chat.ultima_mensagem_texto}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-400 mb-2">
-                        {chat.ultima_mensagem_data?.toDate().toLocaleDateString('pt-BR')}
-                      </p>
-                      <span className="text-xs font-bold text-blue-600">Abrir Chat &rarr;</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
+              <p className="text-5xl font-black text-slate-900 mb-4">{totalProdutos}</p>
+              <Link href="/dashboard/meu-catalogo" className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center">
+                Gerenciar inventário <span className="ml-2">&rarr;</span>
+              </Link>
+            </div>
+          )}
+
+          {/* KPI de Negociações (Serve para ambos, mas com textos diferentes) */}
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest">
+                {isVendedor ? "Orçamentos Recebidos" : "Cotações Abertas"}
+              </h3>
+              <div className="h-10 w-10 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center text-xl">💬</div>
+            </div>
+            <p className="text-5xl font-black text-slate-900 mb-4">{totalNegociacoes}</p>
+            <Link href="/dashboard/mensagens" className="text-sm font-bold text-orange-600 hover:text-orange-800 flex items-center">
+              Acessar sala de chat <span className="ml-2">&rarr;</span>
+            </Link>
           </div>
 
-          {/* Coluna de Inventário Rápido */}
-          <div className="space-y-6">
-            <h3 className="text-lg font-bold text-slate-800">Meu Catálogo</h3>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm divide-y divide-gray-50">
-              {meusProdutos.slice(0, 5).map((p) => (
-                <div key={p.id} className="p-4 flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-700 truncate mr-2">{p.nome}</span>
-                  <span className="text-xs font-bold text-slate-400">R$ {p.preco}</span>
-                </div>
-              ))}
-              {meusProdutos.length === 0 && <p className="p-4 text-xs text-gray-400">Sem itens cadastrados.</p>}
-              <Link href="/dashboard" className="block p-3 text-center text-xs text-blue-600 font-bold hover:bg-gray-50">Ver todos</Link>
+          {/* Banner "Convite" para Compradores que ainda não vendem */}
+          {!isVendedor && (
+            <div className="lg:col-span-2 bg-gradient-to-r from-orange-500 to-orange-600 p-8 rounded-2xl shadow-sm text-white flex flex-col justify-center">
+              <h3 className="text-2xl font-bold mb-2">Transforme o seu estoque em receita!</h3>
+              <p className="mb-6 opacity-90 max-w-lg">O Nexus B2B conecta a sua empresa aos maiores compradores da indústria. Comece a anunciar gratuitamente.</p>
+              <div>
+                <Link href="/dashboard/novo-produto" className="inline-block px-6 py-3 bg-white text-orange-600 font-bold rounded-lg shadow-sm hover:bg-gray-50 transition">
+                  Anunciar Meu Primeiro Produto
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
+
+        <div className="bg-slate-900 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
+          <div className="relative z-10 max-w-2xl">
+            <h2 className="text-2xl font-bold mb-2">Configure o seu Perfil B2B</h2>
+            <p className="text-gray-400 mb-6">Mantenha os dados do seu CNPJ atualizados. Perfis verificados geram 40% mais confiança em negociações industriais.</p>
+            <Link href="/dashboard/perfil" className="inline-block px-6 py-3 bg-white text-slate-900 font-bold rounded-lg hover:bg-gray-100 transition">
+              Atualizar Dados da Empresa
+            </Link>
+          </div>
+          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-slate-800 blur-3xl opacity-50"></div>
+        </div>
+
       </section>
     </main>
   );
