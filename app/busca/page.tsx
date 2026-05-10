@@ -78,6 +78,7 @@ export default function PaginaBusca() {
               placeholder="Ex: Andaime, Furadeira, NR12..." 
               value={termo}
               onChange={(e) => setTermo(e.target.value)}
+              'bg-white'
               className="w-full px-6 py-5 rounded-2xl shadow-2xl text-slate-900 text-lg outline-none focus:ring-4 focus:ring-orange-500/30 transition-all"
             />
             {carregando && (

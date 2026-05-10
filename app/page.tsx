@@ -36,6 +36,7 @@ export default function Home() {
             type="text" 
             value={termoBusca}
             onChange={(e) => setTermoBusca(e.target.value)}
+            bg-white
             placeholder="Ex: Cortina de luz, Andaime NR18, Capacete..."
             className="flex-1 px-6 py-4 text-lg rounded-lg outline-none focus:ring-4 focus:ring-orange-500/50 text-slate-900 shadow-xl"
           />
